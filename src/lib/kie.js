@@ -1,3 +1,4 @@
+import { pollKieJobs, normalizeKieResult } from '../../packages/studio/src/lib/kie-jobs.mjs';
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById } from './models.js';
 import * as cf from './api.js';
 import { buildVideoParams } from './videoSpecs.js';
@@ -57,42 +58,7 @@ export class KieClient {
     }
 
     async pollJobs(taskId, key, maxAttempts = 60, interval = 2000) {
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, interval));
-            console.log(`[Kie] Poll ${attempt}/${maxAttempts} ${taskId}`);
-
-            try {
-                const response = await fetch(`${this.baseUrl}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }
-                });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    console.warn(`[Kie] Poll error (${response.status}):`, errText);
-                    if (response.status >= 500) continue;
-                    throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
-                }
-
-                const json = await response.json();
-                if (json.code && json.code !== 200) {
-                    if (attempt === maxAttempts) throw new Error(`KIE Poll Error ${json.code}: ${json.msg}`);
-                    continue;
-                }
-
-                const data = json.data || {};
-                const state = (data.state || '').toLowerCase();
-
-                if (state === 'success') return data;
-                if (state === 'fail' || state === 'error') {
-                    throw new Error(`Generation failed: ${data.failMsg || 'Unknown error'}`);
-                }
-            } catch (error) {
-                if (attempt === maxAttempts) throw error;
-                console.warn('[Kie] Poll attempt failed, retrying...', error.message);
-            }
-        }
-        throw new Error('Generation timed out after polling.');
+        return pollKieJobs({ taskId, apiKey: key, baseUrl: this.baseUrl, maxAttempts, interval });
     }
 
     async pollVeo(taskId, key, maxAttempts, interval) {
@@ -144,9 +110,7 @@ export class KieClient {
     }
 
     _extractUrl(data) {
-        if (Array.isArray(data.resultUrls) && data.resultUrls.length) return data.resultUrls[0];
-        if (data.response?.resultUrls?.length) return data.response.resultUrls[0];
-        return null;
+        return normalizeKieResult(data).url;
     }
 
     _imageModel(id) {
@@ -425,7 +389,7 @@ export class KieClient {
         const bridge = cfPath();
         if (bridge) return bridge.uploadFile(file);
         const key = this.getKey();
-        const url = `${this.baseUrl}/api/v1/file-stream-upload`;
+        const url = 'https://kieai.redpandaai.co/api/file-stream-upload';
 
         const formData = new FormData();
         formData.append('file', file);

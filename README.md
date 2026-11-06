@@ -1,3 +1,7 @@
+# YSP Open Higgsfield Studio
+
+This fork runs on **KIE AI**, not the official Higgsfield API or Muapi. The inherited upstream README below describes an older version and is retained for provenance only. Follow [the YSP setup guide](docs/YSP_SETUP.md) for this fork.
+
 # Open Higgsfield AI — Open-Source Alternative to Higgsfield AI
 
 > **The free, open-source alternative to Higgsfield AI.** Generate AI images and videos using 200+ state-of-the-art models — without the closed ecosystem or subscription fees.

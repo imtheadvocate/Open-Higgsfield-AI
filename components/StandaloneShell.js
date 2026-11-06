@@ -95,7 +95,7 @@ export default function StandaloneShell() {
           <div className="bg-[#111] border border-white/10 rounded-2xl p-8 w-full max-w-md">
             <h2 className="text-white font-bold text-xl mb-6">Settings</h2>
             <p className="text-white/50 text-sm mb-4">
-              Current API key: <span className="text-white/80 font-mono">{apiKey.slice(0, 8)}••••••••</span>
+              Current API key: <span className="text-white/80 font-mono">••••••••</span>
             </p>
             <div className="flex gap-3">
               <button

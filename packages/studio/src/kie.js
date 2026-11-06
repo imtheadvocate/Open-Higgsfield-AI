@@ -1,3 +1,4 @@
+import { pollKieJobs, normalizeKieResult } from './lib/kie-jobs.mjs';
 const BASE_URL = 'https://api.kie.ai';
 
 async function getHeaders(apiKey) {
@@ -8,39 +9,11 @@ async function getHeaders(apiKey) {
 }
 
 async function pollJobs(taskId, apiKey, maxAttempts = 900, interval = 2000) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, interval));
-        try {
-            const response = await fetch(`${BASE_URL}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
-                headers: await getHeaders(apiKey)
-            });
-            if (!response.ok) {
-                const errText = await response.text();
-                if (response.status >= 500) continue;
-                throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 200)}`);
-            }
-            const json = await response.json();
-            if (json.code && json.code !== 200) {
-                if (attempt === maxAttempts) throw new Error(`KIE Poll Error ${json.code}: ${json.msg}`);
-                continue;
-            }
-            const data = json.data || {};
-            const state = (data.state || '').toLowerCase();
-            if (state === 'success') return data;
-            if (state === 'fail' || state === 'error') {
-                throw new Error(`Generation failed: ${data.failMsg || 'Unknown error'}`);
-            }
-        } catch (error) {
-            if (attempt === maxAttempts) throw error;
-        }
-    }
-    throw new Error('Generation timed out after polling.');
+    return pollKieJobs({ taskId, apiKey, maxAttempts, interval });
 }
 
 function extractResultUrl(data) {
-    if (Array.isArray(data.resultUrls) && data.resultUrls.length) return data.resultUrls[0];
-    if (data.response?.resultUrls?.length) return data.response.resultUrls[0];
-    return null;
+    return normalizeKieResult(data).url;
 }
 
 async function submitTask(apiKey, slug, input, onRequestId, maxAttempts = 60) {
@@ -255,7 +228,7 @@ export async function processLipSync(apiKey, params) {
 
 export function uploadFile(apiKey, file, onProgress) {
     return new Promise((resolve, reject) => {
-        const url = `${BASE_URL}/api/v1/file-stream-upload`;
+        const url = 'https://kieai.redpandaai.co/api/file-stream-upload';
         const formData = new FormData();
         formData.append('file', file);
         formData.append('uploadPath', 'open-higgsfield');
